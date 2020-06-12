@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>Code Patching using Transformer Models | Thoughts</title>
+<meta name="generator" content="Jekyll v3.8.7" />
+<meta property="og:title" content="Code Patching using Transformer Models" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Personal Website" />
+<meta property="og:description" content="Personal Website" />
+<link rel="canonical" href="https://hsezhiyan.github.io/Thoughts/TransformerBlog.html" />
+<meta property="og:url" content="https://hsezhiyan.github.io/Thoughts/TransformerBlog.html" />
+<meta property="og:site_name" content="Thoughts" />
+<script type="application/ld+json">
+{"@type":"WebPage","url":"https://hsezhiyan.github.io/Thoughts/TransformerBlog.html","headline":"Code Patching using Transformer Models","description":"Personal Website","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="stylesheet" href="/Thoughts/assets/css/style.css?v=">
+  </head>
+  <body>
+    <div class="container-lg px-3 my-5 markdown-body">
+
+      <h2 id="code-patching-using-transformer-models">Code Patching using Transformer Models</h2>
+
+<p>The repo for this project can be found <a href="https://github.com/hsezhiyan/CodePatching289G">here.</a></p>
+
+<p>Professional developers spend around 70% of their time debugging. Of
+the approximately 70 buggy lines of code that developers write for every 1000
+lines, 15 make it to production. Compilers and interpreters have been designed
+with this in mind, often providing programmers with error-fixing tips, but often fail at providing insightful clues on how to fix bugs.</p>
+
+<p>Neural networks have become a candidate for bug patching. This work involves using transformer models to translate one-line Java buggy lines to bug free lines.</p>
+
+<h2 id="data">Data</h2>
+
+<p>We mined about 10,000 Java Github repos, and extracted 1 lines changes between pre-commit and post-commit. Since these changes occur between successive commits, we reason they represent logical bugs in addition to syntax or code-style errors. In the end, we obtained about 90,000 1 line changes.</p>
+
+<h2 id="experiments">Experiments</h2>
+
+<p>We treated this problem as a translation problem, specifically involving the translation of a buggy line to a bug free line. Contrary to natural language, source code is very structured and coherent. In addition, most buggy lines need only small changes to be converted to bug free lines. For these reasons, we reasoned transformer models would be well suited for this task. For this work, we experimented with the following 5 configurations:</p>
+
+<ul>
+  <li>Base Model with Beam Size 4 Direct use of the Tensor2Tensor Transformer model.</li>
+  <li>Base Model with Beam Size 10: Base model, but a larger beam size during the decoding phase.</li>
+  <li>Base Model with BPE: Base model with byte-pair encoding with a vocabulary size of 2,000. Software is unique from natural language in that the vocabularly size is almost unlimited. Developers routinely create new identifiers. To combat this, we reduced the vocabulary to 2,000 unique tokens.</li>
+  <li>Base Model with 2 line Context: Base model with context. In addition to the buggy-line, 2 lines of context are also fed into the model for both training and testing. We hoped this context would allow the model to reason about the cause of the bug.</li>
+  <li>Base Model with 1 line Context: Same as the above model, but only 1 line of context is fed in as input.</li>
+</ul>
+
+<h2 id="results">Results</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th style="text-align: center">Beam Size</th>
+      <th style="text-align: right">BLEU</th>
+      <th style="text-align: right">Fix Accuracy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Base Model</td>
+      <td style="text-align: center">4</td>
+      <td style="text-align: right">77.9</td>
+      <td style="text-align: right">53.3</td>
+    </tr>
+    <tr>
+      <td>Base Model, Beam Size 10</td>
+      <td style="text-align: center">10</td>
+      <td style="text-align: right">77.9</td>
+      <td style="text-align: right">53.3</td>
+    </tr>
+    <tr>
+      <td>Base Model, with BPE (2k vocab)</td>
+      <td style="text-align: center">4</td>
+      <td style="text-align: right">82.3</td>
+      <td style="text-align: right">54.6</td>
+    </tr>
+    <tr>
+      <td>Base Model, 1 line content</td>
+      <td style="text-align: center">4</td>
+      <td style="text-align: right">84.3</td>
+      <td style="text-align: right">35.5</td>
+    </tr>
+    <tr>
+      <td>Base Model, 2 line context</td>
+      <td style="text-align: center">4</td>
+      <td style="text-align: right">84.8</td>
+      <td style="text-align: right">33.5</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="successful-translations">Successful Translations</h2>
+
+<p>Input: @Exported ( name = ”str” ) <br />
+Reference: @Exported ( name = ”str” , inline = true ) <br />
+Model Output: @Exported ( name = ”str” , inline = true )</p>
+
+<p>Input: String txt = yytext ( ) ; <br />
+Reference: } <br />
+Model Output: }</p>
+
+<p>Input: public static String getDefaultAlias ( String aSourceName ) <br />
+Reference: public static String getDefaultAlias ( String sourceName ) <br />
+Model Output: public static String getDefaultAlias ( String sourceName )</p>
+
+<p>Input: Map &lt;String , DetectorNode &gt;nodeMap = new HashMap &lt;String ,
+DetectorNode &gt;( ) ; <br />
+Reference: Map &lt;String , DetectorNode &gt;nodeMap = new HashMap &lt;&gt;( ) ; <br />
+Model Output: Map &lt;String , DetectorNode &gt;nodeMap = new HashMap &lt;&gt;(
+) ;</p>
+
+<p>Input: ArrayList <T>list = new ArrayList <T>( ) ; <br />
+Reference: ArrayList <T>list = new ArrayList &lt;&gt;( ) ; <br />
+Model Output: ArrayList <T>list = new ArrayList &lt;&gt;( ) ;</T></T></T></T></p>
+
+<p>Input: Setting . byteSizeSetting ( ”str” , new ByteSizeValue ( 32 , ByteSizeUnit
+. KB ) , Property . NodeScope ) ; <br />
+Reference: Setting . byteSizeSetting ( ”str” , new ByteSizeValue ( 64 , ByteSizeUnit . KB ) , Property . NodeScope ) ; <br />
+Model Output: Setting . byteSizeSetting ( ”str” , new ByteSizeValue ( 64 ,
+ByteSizeUnit . KB ) , Property . NodeScope ) ;</p>
+
+<h2 id="analysis-of-successful-translations">Analysis of Successful Translations</h2>
+
+<p>These 4 error fixes presented are by no means the full extent of the model. A
+full file of translations is available in the repository. These examples do indicate
+the model is able to learn:</p>
+
+<ul>
+  <li>Import/Export Syntax: The first example includes the use of the @Exported annotated type. The model is correctly able to recognize that this line is buggy because the designated function is an inline function. This bug fix will help developers write code that does not need to be compiled independently.</li>
+  <li>End of Function: The second example reveals how the model is able reason that a line of code is unnecesary, and returns ’}’. This ends control of the function.</li>
+  <li>Variable Naming: The third example does not constitute a synatx or logical error, but instead a code-style error. The developer named the parameter variable ’aSourceName’, which is not conventional. The model correctly returned ’sourceName’.</li>
+  <li>Constructor Initialization: The next two examples reveal the model is able to reason about syntactic structures. In particular, it is able to correctly initialize two objects with constructors: a Map object and an ArrayList object.</li>
+  <li>Common Logical Errors: The last example is a surprising result. The model is able to fix common logical changes, like changing a set length from 32 bytes to 64 bytes. On would think this is a fix that requires more context, but the model recognizes how often this change is made in the dataset, and accordingly adjusts.</li>
+</ul>
+
+<h2 id="failure-modes">Failure Modes</h2>
+
+<p>Input: private void checkIfClosed ( ) throws IOException { <br />
+Reference: private void checkIfClosed ( ) { <br />
+Model Output: private void checkIfClosed ( ) throws IOException {</p>
+
+<p>Input: addMessage ( new Message ( MessageKind . INFORMATION , model .
+getModelUID ( ) + ”str” + ( genOK ? ”str” : ”str” ) ) ) ; <br />
+Reference: addMessage ( new Message ( genOK ? MessageKind . INFORMATION : MessageKind . WARNING , model . getModelUID ( ) + ”str” + (
+genOK ? ”str” : ”str” ) ) ) ; <br />
+Model Output: addMessage ( new Message ( MessageKind . INFORMATION
+, model . getModelUID ( ) + ”str” + ( genOK ? ”str” : ”str” ) ) ) ;</p>
+
+<p>Input: return 1 ; <br />
+Reference: return curSelection = = null ? 0 : 1 ; <br />
+Model Output: return 2 ;</p>
+
+<h2 id="analysis-of-failed-translations">Analysis of Failed Translations</h2>
+
+<p>These three errors are not comprehensize of all issues with the models presented,
+but highlight some key failure modes:</p>
+
+<ul>
+  <li>Deleting Code: Consistently, we notice our model fails to delete code
+because the majority of code changes during a pull request involve code addition, not deletion.</li>
+  <li>Complex Logical: Currently, even with a Transformer model, we are not able to fix long, complex logical statements. These issues may require a deeper architecture, a larger, more diverse training dataset, or both.</li>
+  <li>Return Logic: Return statements come at the very end of a function, method, or program. They represent the overarching logic behind the written code, and to reason about them will likely require deeper, more advanced architectures.</li>
+</ul>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>This work clearly shows that Transformer models are well suited for code patching. Their ability to reason with long-distance dependencies seemed promising
+in theory, and these experiments prove they indeed work in practice.
+In addition to mere syntactic fixes, these models are able to fix some style and
+even basic logical errors. We hope those who come after us will be able to further refine these models to solve increasingly complex bugs.</p>
+
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'hariharansezhiyan'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+
+
+      
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/anchor-js/4.1.0/anchor.min.js" integrity="sha256-lZaRhKri35AyJSypXXs4o6OPFTbTmUoltBbDCbdzegg=" crossorigin="anonymous"></script>
+    <script>anchors.add();</script>
+    
+  </body>
+</html>
