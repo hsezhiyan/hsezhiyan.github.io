@@ -29,7 +29,7 @@ class ForeachFlow(FlowSpec):
 
     @step
     def join(self, inputs): # type: join node
-        self.results = [input.title for input in inputs]
+        self.results = [input for input in inputs]
         print("Inside join")
         print("Joining this list: ", self.results)
         self.next(self.end)
