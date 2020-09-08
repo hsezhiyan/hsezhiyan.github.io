@@ -24,13 +24,15 @@ class ForeachFlow(FlowSpec):
         print("Inside explore...")
         print("Reading input variable: ", self.input)
         print("Done exploring...")
+        self.val = '%s processed' % self.input
 
         self.next(self.join)
 
     @step
     def join(self, inputs): # type: join node
+        self.results = [input.val for input in inputs]
         print("Inside join")
-        print("Joining this list: ", self.inputs)
+        print("Joining this list: ", self.results)
         self.next(self.end)
 
     @step
