@@ -14,7 +14,7 @@ class ForeachFlow(FlowSpec):
 
         # Let's generate a list of numbers. We do not know
         # length of this list until this piece of code executes.
-        num_splits = random.randint(2,10)
+        num_splits = 4
         self.list_to_explore = [x for x in range(num_splits)]
         print("(For validation from inside the flow) Foreach fanout num_splits : ", len(self.list_to_explore))
 
